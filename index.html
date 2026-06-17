@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBIT // Secure Access Node</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #0b0b14;
+    --bg-2: #121223;
+    --card: rgba(19, 19, 36, 0.65);
+    --card-solid: #14142b;
+    --stroke: rgba(255, 255, 255, 0.09);
+    --stroke-strong: rgba(255, 255, 255, 0.18);
+    --text: #e8e7f0;
+    --muted: #9492a8;
+    --dim: #6a6880;
+    --accent: #7b5bff;
+    --accent-2: #00e8c6;
+    --danger: #ff5a7a;
+    --success: #34e5a7;
+    --warning: #ffc156;
+    --radius-xl: 28px;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --shadow: 0 20px 70px rgba(0,0,0,0.55);
+    --blur: blur(22px) saturate(1.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: radial-gradient(1200px 800px at 18% 50%, #1a1833 0%, #0d0c1a 38%, #090912 65%, #07070d 100%);
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  #app {
+    min-height: 100dvh;
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* Left - 3D Stage */
+  .stage {
+    position: relative;
+    flex: 1.22;
+    min-height: 100dvh;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 600px at 60% 50%, rgba(123,91,255,0.055), transparent 60%),
+      radial-gradient(700px 500px at 30% 78%, rgba(0,232,198,0.035), transparent 60%);
+  }
+
+  #webgl {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    outline: none;
+  }
+
+  .stage-ui {
+    position: relative;
+    z-index: 5;
+    height: 100%;
+    padding: 40px 44px 34px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    font-family: 'Fragment Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .brand-mark {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #dcdaf0;
+    letter-spacing: 0.02em;
+  }
+  .brand-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: linear-gradient(145deg, #8c72ff, #5935e6);
+    box-shadow: 0 8px 24px rgba(123,91,255,.38), inset 0 1px 0 rgba(255,255,255,.35);
+    position: relative;
+  }
+  .brand-dot::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border-radius: 5px;
+    border: 1.5px solid rgba(255,255,255,.72);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--stroke);
+    background: rgba(12,12,24,0.44);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 8px 12px;
+    border-radius: 999px;
+    color: #aaa8be;
+  }
+  .status-led {
+    width: 7px;
+    height: 7px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(52,229,167,.7);
+  }
+
+  .stage-footer {
+    max-width: 460px;
+    pointer-events: auto;
+  }
+  .stage-kicker {
+    font-family: 'Fragment Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #7f7d95;
+    margin-bottom: 14px;
+  }
+  .stage-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(38px, 5.1vw, 68px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+  .stage-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: #c4bfff;
+  }
+  .stage-copy {
+    color: #a09eb6;
+    font-size: 15.5px;
+    line-height: 1.6;
+    max-width: 420px;
+  }
+
+  .stage-metrics {
+    display: flex;
+    gap: 28px;
+    margin-top: 22px;
+    font-family: 'Fragment Mono', monospace;
+    font-size: 11px;
+    color: #7c7a8e;
+  }
+  .stage-metrics strong {
+    display: block;
+    color: #d7d5e7;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  /* Right - Login Panel */
+  .panel-wrap {
+    width: 510px;
+    min-width: 410px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 38px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.019), rgba(255,255,255,0.008));
+    border-left: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .panel-glow {
+    position: absolute;
+    right: -180px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(123,91,255,0.15), rgba(123,91,255,0.055) 45%, transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+    background: linear-gradient(180deg, rgba(30,28,52,0.86), rgba(21,20,38,0.86));
+    border: 1px solid var(--stroke-strong);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.065);
+    padding: 32px 30px 28px;
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    transform-style: preserve-3d;
+    transition: transform .18s ease-out;
+  }
+
+  .card-eyebrow {
+    font-family: 'Fragment Mono', monospace;
+    font-size: 10.7px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8e8ba6;
+    margin-bottom: 12px;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin-bottom: 8px;
+  }
+  .card-sub {
+    color: #9a97af;
+    font-size: 14.2px;
+    line-height: 1.55;
+    margin-bottom: 26px;
+  }
+
+  .field {
+    margin-bottom: 15px;
+  }
+  .field-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #bfbddd;
+    margin-bottom: 8px;
+  }
+  .field-label span.hint {
+    color: #76748a;
+    font-weight: 500;
+  }
+
+  .input-shell {
+    position: relative;
+    background: rgba(8, 8, 18, 0.72);
+    border: 1.35px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    transition: border-color .18s, box-shadow .18s, background .18s;
+  }
+  .input-shell:focus-within {
+    border-color: rgba(123,91,255,0.85);
+    box-shadow: 0 0 0 4px rgba(123,91,255,0.13), inset 0 1px 0 rgba(255,255,255,0.035);
+    background: rgba(11,11,26,0.88);
+  }
+  .input-shell.error {
+    border-color: rgba(255,90,122,0.8);
+    box-shadow: 0 0 0 4px rgba(255,90,122,0.10);
+  }
+
+  .text-input {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    padding: 15px 46px 15px 15px;
+  }
+  .text-input::placeholder { color: #6e6c80; }
+
+  .input-icon-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: #a8a5bd;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: .15s;
+  }
+  .input-icon-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.07);
+  }
+
+  .row-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13.2px;
+    color: #9b98ad;
+    margin: 6px 2px 20px;
+  }
+
+  /* Custom toggle */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle input { display:none; }
+  .toggle-track {
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #1b1b2d;
+    border: 1px solid rgba(255,255,255,0.14);
+    position: relative;
+    transition: .18s;
+  }
+  .toggle-knob {
+    position: absolute;
+    top: 2.5px;
+    left: 2.5px;
+    width: 17px;
+    height: 17px;
+    background: #908ea6;
+    border-radius: 50%;
+    transition: .18s cubic-bezier(.2,.8,.2,1);
+  }
+  .toggle input:checked + .toggle-track {
+    background: rgba(123,91,255,0.28);
+    border-color: rgba(123,91,255,0.6);
+  }
+  .toggle input:checked + .toggle-track .toggle-knob {
+    transform: translateX(18px);
+    background: #dcd4ff;
+  }
+
+  .link-muted { color: #b6b3c9; transition: color .15s; }
+  .link-muted:hover { color: #fff; }
+
+  .btn-primary {
+    width: 100%;
+    border: 0;
+    cursor: pointer;
+    padding: 15px 18px;
+    border-radius: 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #f7f3ff;
+    background: linear-gradient(180deg, #8b6aff, #6a42f3 65%, #5832df);
+    box-shadow: 0 14px 32px rgba(97, 58, 230, .42), inset 0 1px 0 rgba(255,255,255,.28);
+    transition: transform .08s ease, filter .15s ease, box-shadow .15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary:disabled { opacity: .75; cursor: not-allowed; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2.4px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    animation: spin .75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #7c7990;
+    font-size: 11.8px;
+    margin: 20px 0 16px;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.13), transparent);
+  }
+
+  .alt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .alt-btn {
+    border: 1px solid rgba(255,255,255,0.11);
+    background: rgba(255,255,255,0.028);
+    color: #c9c6da;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13.4px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: .15s;
+  }
+  .alt-btn:hover {
+    border-color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.056);
+    color: #fff;
+  }
+
+  .card-foot {
+    text-align: center;
+    color: #8a879d;
+    font-size: 13.2px;
+    margin-top: 20px;
+  }
+  .card-foot a { color: #d1ceea; font-weight: 600; }
+  .card-foot a:hover { text-decoration: underline; }
+
+  .capsule-note {
+    margin-top: 16px;
+    border: 1px dashed rgba(255,255,255,0.14);
+    border-radius: 12px;
+    padding: 11px 13px;
+    color: #8f8da1;
+    font-family: 'Fragment Mono', monospace;
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  .capsule-note b { color: #bdb9d6; font-weight: 600; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(16px);
+    background: rgba(21,20,37,0.95);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #dcd9ea;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+    transition: .22s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-width: 90vw;
+    text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.ok { border-color: rgba(52,229,167,.45); }
+  #toast.err { border-color: rgba(255,90,122,.45); }
+
+  /* Access granted overlay */
+  #accessOverlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(900px 600px at 50% 45%, rgba(52,229,167,0.10), rgba(8,11,17,0.94) 62%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    color: #e7fff6;
+    text-align: center;
+  }
+  #accessOverlay.visible { display: flex; }
+  .access-inner h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 52px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .access-inner p {
+    color:#98eccd;
+    font-family: 'Fragment Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .access-ring {
+    width: 94px; height: 94px;
+    border-radius: 50%;
+    border: 2px solid rgba(52,229,167,.6);
+    margin: 0 auto 22px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(52,229,167,.25);
+  }
+  .access-ring::after {
+    content:'✓';
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-size: 34px; color: #8bffcf;
+  }
+
+  /* Responsive */
+  @media (max-width: 980px) {
+    #app { flex-direction: column; }
+    .stage { min-height: 46vh; flex: none; }
+    .stage-ui { padding: 22px 20px 20px; }
+    .stage-title { font-size: 44px; }
+    .stage-footer { max-width: 560px; }
+    .stage-metrics { display: none; }
+    .panel-wrap {
+      width: 100%;
+      min-width: 0;
+      padding: 26px 18px 42px;
+      border-left: 0;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .login-card { max-width: 460px; margin: 0 auto; }
+    .panel-glow { display: none; }
+  }
+
+  @media (max-width: 520px) {
+    .stage { min-height: 39vh; }
+    .top-bar { font-size: 10px; }
+    .stage-title { font-size: 34px; }
+    .login-card { padding: 24px 18px 22px; border-radius: 22px; }
+    .card-title { font-size: 28px; }
+    .alt-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Left: 3D Sentinel -->
+  <section class="stage" aria-label="Authentication Sentinel Visualizer">
+    <canvas id="webgl" aria-hidden="true"></canvas>
+    <div class="stage-ui">
+      <div class="top-bar">
+        <div class="brand-mark">
+          <div class="brand-dot" aria-hidden="true"></div>
+          <div>ORBIT / ACCESS NODE-03</div>
+        </div>
+        <div class="status-pill">
+          <span class="status-led" id="statusLed"></span>
+          Sentinel Active
+        </div>
+      </div>
+
+      <div class="stage-footer">
+        <div class="stage-kicker">Biometric Sentinel V2.7</div>
+        <h1 class="stage-title">Secure<br>identity,<br><em>beautifully.</em></h1>
+        <p class="stage-copy">The Sentinel Core watches entry vectors in real time. Focus a field to see it react — it's making sure it's really you.</p>
+        <div class="stage-metrics">
+          <div><strong id="met-latency">18 ms</strong>Auth latency</div>
+          <div><strong>ED25519</strong>Passkey ready</div>
+          <div><strong>99.998%</strong>Uptime 90d</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: Login -->
+  <aside class="panel-wrap">
+    <div class="panel-glow" aria-hidden="true"></div>
+    <div class="login-card" id="loginCard">
+      <div class="card-eyebrow">Secure Access</div>
+      <h2 class="card-title">Welcome back</h2>
+      <p class="card-sub">Sign in to your Orbit workspace. The Sentinel will verify your presence.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label class="field-label" for="email">Work email <span class="hint">SSO enabled</span></label>
+          <div class="input-shell" id="emailShell">
+            <input class="text-input" id="email" name="email" type="email" placeholder="you@studio.co" autocomplete="email" required />
+            <button type="button" class="input-icon-btn" id="emailClear" aria-label="Clear email" tabindex="-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <label for="password">Password</label>
+            <span class="hint" id="pwdHint">Caps Lock off</span>
+          </div>
+          <div class="input-shell" id="passwordShell">
+            <input class="text-input" id="password" name="password" type="password" placeholder="••••••••••" autocomplete="current-password" required />
+            <button type="button" class="input-icon-btn" id="togglePassword" aria-label="Show password">
+              <!-- eye -->
+              <svg id="eyeOpenIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eyeClosedIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 10.6A2 2 0 0 0 12 14a2 2 0 0 0 1.4-3.4"/><path d="M9.88 5.19A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a17.9 17.9 0 0 1-4.12 4.9M6.16 6.16A17.7 17.7 0 0 0 1 12s4 7 11 7a11.1 11.1 0 0 0 4.13-.77"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <label class="toggle">
+            <input type="checkbox" id="remember" checked>
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            <span>Remember this device</span>
+          </label>
+          <a href="#" class="link-muted" id="forgotLink">Forgot?</a>
+        </div>
+
+        <button class="btn-primary" id="signinBtn" type="submit">
+          <span id="signinLabel">Sign in to Orbit</span>
+          <span class="spinner" id="signinSpinner" style="display:none"></span>
+        </button>
+
+        <div class="divider">or continue with</div>
+
+        <div class="alt-grid">
+          <button type="button" class="alt-btn" id="passkeyBtn" aria-label="Sign in with Passkey">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/><circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/></svg>
+            Passkey
+          </button>
+          <button type="button" class="alt-btn" id="fingerprintBtn" aria-label="Biometric">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 11a3 3 0 0 0-3 3v1"/><path d="M12 3a7.5 7.5 0 0 0-5.3 12.7"/><path d="M12 3c3.3 0 6 2.7 6 6v3"/><path d="M9 20.1A7.5 7.5 0 0 1 4.5 12V9"/><path d="M15 20.1A7.5 7.5 0 0 0 19.5 12V9"/><path d="M12 20v-1a3 3 0 0 0-3-3"/></svg>
+            Fingerprint
+          </button>
+        </div>
+
+        <p class="card-foot">New to Orbit? <a href="#" id="createAcct">Create account — it's free</a></p>
+
+        <div class="capsule-note">
+          Demo tip: <b>any valid email + password ≥ 6 chars</b> will authenticate. Try an invalid one to see the Sentinel reject it.
+        </div>
+      </form>
+    </div>
+  </aside>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div id="accessOverlay" aria-hidden="true">
+  <div class="access-inner">
+    <div class="access-ring"></div>
+    <h2>Access granted</h2>
+    <p>Sentinel signature verified • Node-03</p>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('webgl');
+const stage = document.querySelector('.stage');
+
+// Scene
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0b0b16, 0.028);
+
+const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 100);
+camera.position.set(0, 0.35, 6.2);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.9));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.enableZoom = false;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.28;
+controls.minPolarAngle = Math.PI * 0.38;
+controls.maxPolarAngle = Math.PI * 0.62;
+controls.target.set(0, 0.05, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x9e93ff, 0.45));
+const keyLight = new THREE.DirectionalLight(0xcfc6ff, 1.15);
+keyLight.position.set(3.6, 4, 3.2);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x00ffd5, 0.8);
+rimLight.position.set(-3.2, -1.2, -2.8);
+scene.add(rimLight);
+const fill = new THREE.PointLight(0x7b5bff, 2.8, 16);
+fill.position.set(0, 0.2, 1.9);
+scene.add(fill);
+
+// Auth Core
+const coreGroup = new THREE.Group();
+scene.add(coreGroup);
+
+// Base plinth glow
+const plinth = new THREE.Mesh(
+  new THREE.CircleGeometry(2.15, 64),
+  new THREE.MeshBasicMaterial({ color: 0x6a52ff, transparent: true, opacity: 0.061 })
+);
+plinth.rotation.x = -Math.PI / 2;
+plinth.position.y = -1.85;
+scene.add(plinth);
+
+// Outer cage
+const cage = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(1.88, 1),
+  new THREE.MeshBasicMaterial({ color: 0x9988ff, wireframe: true, transparent: true, opacity: 0.7 })
+);
+coreGroup.add(cage);
+
+// Halo rings
+const ringGeo = new THREE.TorusGeometry(2.12, 0.013, 16, 128);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffe8, transparent: true, opacity: 0.58 });
+const ringA = new THREE.Mesh(ringGeo, ringMat);
+ringA.rotation.x = Math.PI / 2.22;
+coreGroup.add(ringA);
+
+const ringB = new THREE.Mesh(
+  new THREE.TorusGeometry(2.32, 0.01, 16, 140),
+  new THREE.MeshBasicMaterial({ color: 0x9a82ff, transparent: true, opacity: 0.46 })
+);
+ringB.rotation.x = Math.PI / 2.04;
+ringB.rotation.y = 0.42;
+coreGroup.add(ringB);
+
+// Core sphere (the "eye")
+const coreSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(1.08, 72, 72),
+  new THREE.MeshPhysicalMaterial({
+    color: 0x1d193b,
+    roughness: 0.18,
+    metalness: 0.04,
+    transmission: 0.19,
+    thickness: 1.35,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.12,
+    emissive: 0x3c2b9a,
+    emissiveIntensity: 0.27
+  })
+);
+coreGroup.add(coreSphere);
+
+// Iris assembly
+const irisGroup = new THREE.Group();
+coreGroup.add(irisGroup);
+
+// Sclera glow
+const sclera = new THREE.Mesh(
+  new THREE.SphereGeometry(0.62, 48, 48),
+  new THREE.MeshBasicMaterial({ color: 0x9dfde7, transparent: true, opacity: 0.19 })
+);
+sclera.position.z = 0.72;
+irisGroup.add(sclera);
+
+// Iris disc
+const iris = new THREE.Mesh(
+  new THREE.CircleGeometry(0.34, 64),
+  new THREE.MeshBasicMaterial({ color: 0x48ffdd })
+);
+iris.position.z = 1.04;
+irisGroup.add(iris);
+
+// Pupil
+const pupil = new THREE.Mesh(
+  new THREE.CircleGeometry(0.132, 48),
+  new THREE.MeshBasicMaterial({ color: 0x120f26 })
+);
+pupil.position.z = 1.052;
+irisGroup.add(pupil);
+
+// Iris ring
+const irisRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.335, 0.392, 64),
+  new THREE.MeshBasicMaterial({ color: 0xcafffa, transparent: true, opacity: 0.95, side: THREE.DoubleSide })
+);
+irisRing.position.z = 1.043;
+irisGroup.add(irisRing);
+
+// Eyelids (for privacy / blink)
+const eyelidMat = new THREE.MeshBasicMaterial({ color: 0x16132c });
+const eyelidTop = new THREE.Mesh(new THREE.SphereGeometry(1.11, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.52), eyelidMat);
+eyelidTop.position.z = 0.12;
+eyelidTop.rotation.x = Math.PI;
+const eyelidBottom = new THREE.Mesh(new THREE.SphereGeometry(1.11, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.50), eyelidMat);
+eyelidBottom.position.z = 0.12;
+coreGroup.add(eyelidTop, eyelidBottom);
+eyelidTop.visible = false;
+eyelidBottom.visible = false;
+
+// Spark particles
+const pCount = 780;
+const pPos = new Float32Array(pCount * 3);
+for (let i = 0; i < pCount; i++) {
+  const r = 2.45 + Math.random() * 2.8;
+  const th = Math.random() * Math.PI * 2;
+  const ph = Math.acos(THREE.MathUtils.randFloatSpread(1.98) * 0.52);
+  pPos[i*3+0] = r * Math.sin(ph) * Math.cos(th);
+  pPos[i*3+1] = r * Math.cos(ph) * 0.74;
+  pPos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+}
+const particles = new THREE.Points(
+  new THREE.BufferAttribute(pPos, 3) && (() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    return g;
+  })(),
+  new THREE.PointsMaterial({ color: 0xb7abff, size: 0.018, transparent: true, opacity: 0.9, sizeAttenuation: true })
+);
+scene.add(particles);
+
+// Floor grid
+const grid = new THREE.GridHelper(18, 22, 0x3b2f78, 0x241d4a);
+grid.position.y = -1.92;
+grid.material.transparent = true;
+grid.material.opacity = 0.56;
+scene.add(grid);
+
+// Mouse tracking for iris
+const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+stage.addEventListener('pointermove', (e) => {
+  const r = stage.getBoundingClientRect();
+  mouse.targetX = ((e.clientX - r.left) / r.width - 0.5) * 2;
+  mouse.targetY = -((e.clientY - r.top) / r.height - 0.5) * 2;
+});
+
+// Auth visual state
+let authState = 'idle'; // idle | typing | secure | error | success
+let blinkTimer = 0;
+let errorShake = 0;
+let successPulse = 0;
+
+function setAuthState(s) {
+  authState = s;
+  const led = document.getElementById('statusLed');
+  if (s === 'error') { led.style.background = '#ff5a7a'; led.style.boxShadow = '0 0 10px rgba(255,90,122,.7)'; }
+  else if (s === 'success') { led.style.background = '#34e5a7'; led.style.boxShadow = '0 0 10px rgba(52,229,167,.7)'; }
+  else { led.style.background = '#34e5a7'; led.style.boxShadow = '0 0 10px rgba(52,229,167,.7)'; }
+  errorShake = s === 'error' ? 1 : 0;
+  successPulse = s === 'success' ? 1 : 0;
+}
+
+// Animation
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  mouse.x += (mouse.targetX - mouse.x) * 0.06;
+  mouse.y += (mouse.targetY - mouse.y) * 0.06;
+
+  // Core bob
+  coreGroup.position.y = Math.sin(t * 0.95) * 0.09;
+
+  // Rotation speeds based on state
+  let rotSpeed = 0.22;
+  if (authState === 'typing') rotSpeed = 0.66;
+  if (authState === 'secure') rotSpeed = 0.12;
+  if (authState === 'error') rotSpeed = 1.9;
+  if (authState === 'success') rotSpeed = -0.95;
+
+  cage.rotation.y += 0.006 + rotSpeed * 0.012;
+  cage.rotation.x += 0.0018;
+  ringA.rotation.z += 0.012 + rotSpeed * 0.01;
+  ringB.rotation.z -= 0.008 + rotSpeed * 0.006;
+
+  // Iris look
+  const irisX = THREE.MathUtils.clamp(mouse.x * 0.22, -0.28, 0.28);
+  const irisY = THREE.MathUtils.clamp(mouse.y * 0.18, -0.2, 0.2);
+  irisGroup.position.x += (irisX - irisGroup.position.x) * 0.12;
+  irisGroup.position.y += (irisY - irisGroup.position.y) * 0.12;
+
+  // Iris scale = attention / privacy
+  let irisScale = 1;
+  if (authState === 'secure') irisScale = 0.62; // squint / privacy
+  if (authState === 'error') irisScale = 1.32;
+  if (authState === 'success') irisScale = 1.15;
+  iris.scale.setScalar(THREE.MathUtils.lerp(iris.scale.x, irisScale, 0.09));
+  pupil.scale.setScalar(THREE.MathUtils.lerp(pupil.scale.x, authState === 'secure' ? 0.72 : 1, 0.11));
+
+  // Blink occasionally in idle
+  blinkTimer -= 1/60;
+  let eyelidClose = 0;
+  if (authState === 'secure') eyelidClose = 0.78;
+  else if (blinkTimer <= 0 && authState === 'idle') { eyelidClose = 1; if (blinkTimer < -0.12) blinkTimer = 2.6 + Math.random()*2.4; }
+  if (blinkTimer > 0 && authState !== 'secure') eyelidClose = 0;
+  eyelidTop.visible = eyelidBottom.visible = eyelidClose > 0.05;
+  eyelidTop.position.y = THREE.MathUtils.lerp(eyelidTop.position.y, 0.62 - eyelidClose * 0.9, 0.27);
+  eyelidBottom.position.y = THREE.MathUtils.lerp(eyelidBottom.position.y, -0.62 + eyelidClose * 0.9, 0.27);
+
+  // Core emissive color
+  const mat = coreSphere.material;
+  let targetEmissive = new THREE.Color(0x3c2b9a);
+  let targetIris = new THREE.Color(0x48ffdd);
+  if (authState === 'typing') { targetEmissive.set(0x5b3fe0); targetIris.set(0x67ffe9); }
+  if (authState === 'secure') { targetEmissive.set(0x2a2256); targetIris.set(0x7bffe9); }
+  if (authState === 'error') { targetEmissive.set(0xd22b55); targetIris.set(0xff8fa6); }
+  if (authState === 'success') { targetEmissive.set(0x18c98c); targetIris.set(0xcffff5); }
+  mat.emissive.lerp(targetEmissive, 0.065);
+  iris.material.color.lerp(targetIris, 0.12);
+
+  // Error shake
+  if (errorShake > 0) {
+    coreGroup.position.x = Math.sin(t * 56) * 0.085 * errorShake;
+    errorShake *= 0.92;
+    if (errorShake < 0.012) { errorShake = 0; coreGroup.position.x = 0; setAuthState('idle'); }
+  }
+
+  // Success pulse
+  if (successPulse > 0) {
+    const sp = 1 + Math.sin(t*14) * 0.03 * successPulse;
+    coreGroup.scale.setScalar(THREE.MathUtils.lerp(coreGroup.scale.x, sp, 0.22));
+    successPulse *= 0.992;
+  } else {
+    coreGroup.scale.lerp(new THREE.Vector3(1,1,1), 0.08);
+  }
+
+  // Particles slow drift
+  particles.rotation.y += 0.0009 + (authState === 'typing' ? 0.0026 : 0);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+function onResize(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+new ResizeObserver(onResize).observe(stage);
+window.addEventListener('resize', onResize);
+
+// ----- UI Logic -----
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const emailShell = document.getElementById('emailShell');
+const passwordShell = document.getElementById('passwordShell');
+const togglePasswordBtn = document.getElementById('togglePassword');
+const eyeOpenIcon = document.getElementById('eyeOpenIcon');
+const eyeClosedIcon = document.getElementById('eyeClosedIcon');
+const signinBtn = document.getElementById('signinBtn');
+const signinLabel = document.getElementById('signinLabel');
+const signinSpinner = document.getElementById('signinSpinner');
+const toastEl = document.getElementById('toast');
+const loginCard = document.getElementById('loginCard');
+
+let toastTimer;
+function toast(msg, type='') {
+  toastEl.textContent = msg;
+  toastEl.className = type ? 'show ' + type : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2600);
+}
+
+// Form interactions -> affect 3D sentinel
+let typingTimeout;
+function bumpTyping() {
+  if(authState !== 'secure' && authState !== 'error' && authState !== 'success') {
+    setAuthState('typing');
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(()=> setAuthState('idle'), 950);
+  }
+}
+emailInput.addEventListener('input', ()=> { emailShell.classList.remove('error'); bumpTyping(); });
+passwordInput.addEventListener('input', ()=> { passwordShell.classList.remove('error'); bumpTyping(); });
+
+emailInput.addEventListener('focus', ()=> setAuthState('typing'));
+emailInput.addEventListener('blur', ()=> setAuthState('idle'));
+passwordInput.addEventListener('focus', ()=> setAuthState('secure'));
+passwordInput.addEventListener('blur', ()=> setAuthState('idle'));
+
+// Caps lock hint
+passwordInput.addEventListener('keyup', (e)=>{
+  const cap = e.getModifierState && e.getModifierState('CapsLock');
+  document.getElementById('pwdHint').textContent = cap ? 'Caps Lock on' : 'Caps Lock off';
+});
+
+// Show/hide password (also opens/closes sentinel eye)
+let pwdVisible = false;
+togglePasswordBtn.addEventListener('click', ()=>{
+  pwdVisible = !pwdVisible;
+  passwordInput.type = pwdVisible ? 'text' : 'password';
+  eyeOpenIcon.style.display = pwdVisible ? 'none' : 'block';
+  eyeClosedIcon.style.display = pwdVisible ? 'block' : 'none';
+  setAuthState(pwdVisible ? 'typing' : 'secure');
+  if(document.activeElement === passwordInput) passwordInput.focus();
+});
+
+// Clear email
+document.getElementById('emailClear').addEventListener('click', ()=>{
+  emailInput.value = '';
+  emailInput.focus();
+  setAuthState('idle');
+});
+
+// Parallax tilt on login card
+const panelWrap = document.querySelector('.panel-wrap');
+panelWrap.addEventListener('pointermove', (e)=>{
+  const r = loginCard.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width - 0.5;
+  const py = (e.clientY - r.top) / r.height - 0.5;
+  loginCard.style.transform = `perspective(900px) rotateY(${px * 3.2}deg) rotateX(${-py * 2.6}deg) translateZ(0)`;
+});
+panelWrap.addEventListener('pointerleave', ()=>{
+  loginCard.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg)';
+});
+
+// Validation
+function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = emailInput.value.trim();
+  const pwd = passwordInput.value;
+
+  let valid = true;
+  emailShell.classList.toggle('error', !isValidEmail(email));
+  passwordShell.classList.toggle('error', pwd.length < 6);
+  if(!isValidEmail(email) || pwd.length < 6) valid = false;
+
+  if(!valid){
+    setAuthState('error');
+    toast('Check your email and password.', 'err');
+    return;
+  }
+
+  // loading
+  signinBtn.disabled = true;
+  signinLabel.textContent = 'Verifying…';
+  signinSpinner.style.display = 'inline-block';
+  setAuthState('typing');
+
+  // Fake auth delay
+  await new Promise(r=>setTimeout(r, 1240));
+
+  signinBtn.disabled = false;
+  signinLabel.textContent = 'Sign in to Orbit';
+  signinSpinner.style.display = 'none';
+
+  // Success
+  setAuthState('success');
+  toast('Sentinel verified. Welcome back.', 'ok');
+  document.getElementById('accessOverlay').classList.add('visible');
+  // auto close demo overlay
+  setTimeout(()=>{
+    document.getElementById('accessOverlay').classList.remove('visible');
+    setAuthState('idle');
+  }, 2100);
+});
+
+// Alt actions
+document.getElementById('passkeyBtn').addEventListener('click', ()=>{
+  setAuthState('success');
+  toast('Passkey prompt opened — check your device.', 'ok');
+  setTimeout(()=> setAuthState('idle'), 1300);
+});
+document.getElementById('fingerprintBtn').addEventListener('click', ()=>{
+  setAuthState('typing');
+  toast('Place your finger on the sensor.', '');
+  setTimeout(()=> { setAuthState('success'); toast('Biometric match.', 'ok'); setTimeout(()=> setAuthState('idle'), 900); }, 900);
+});
+document.getElementById('forgotLink').addEventListener('click', (e)=>{ e.preventDefault(); toast('Password reset link sent if an account exists.'); });
+document.getElementById('createAcct').addEventListener('click', (e)=>{ e.preventDefault(); toast('Account creation is invite-only in this demo.'); });
+
+// Live latency number for flavor
+setInterval(()=>{
+  document.getElementById('met-latency').textContent = (14 + Math.floor(Math.random()*11)) + ' ms';
+}, 1600);
+
+</script>
+</body>
+</html>
